@@ -14,8 +14,8 @@
 #include <string.h>
 
 #include "AmiSmbusInterfaceSrcLib.h"
-//#include <openbmc/obmc-i2c.h>
-//#include <openbmc/kv.h>
+#include <openbmc/obmc-i2c.h>
+#include <openbmc/kv.h>
 
 
 // static inline __s32 i2c_smbus_write_block_data(int file, __u8 command,
