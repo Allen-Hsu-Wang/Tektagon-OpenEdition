@@ -361,14 +361,14 @@ sent_data_packet(unsigned char slot_id,
 								 unsigned int data_payload_length,
 							 	 int verbose) 
 {
-  unsigned char data[DATA_LAYER_MAX_PAYLOAD] = {0};
+  unsigned char data[DATA_LAYER_EXTEND_MAX_PACKET] = {0};
   int index = 0;
   unsigned int linklayer_ack_delay = get_linklayer_ack_delay(command);
   
-  if (data_payload_length > DATA_LAYER_MAX_PAYLOAD) {
-    printf("the data length > DATA_LAYER_MAX_PAYLOAD(%d) \n", DATA_LAYER_MAX_PAYLOAD);
+  if (data_payload_length > DATA_LAYER_EXTEND_MAX_PACKET) {
+    printf("the data length > DATA_LAYER_EXTEND_MAX_PACKET(%d) \n", DATA_LAYER_EXTEND_MAX_PACKET);
     return -1;
-  } else if (data_payload_length > 254) {
+  } else if (data_payload_length >= DATA_LAYER_MAX_PAYLOAD) {
     printf("data_payload_length > 254, use 2 bytes DataPacket.Length \n");
     DATA_LAYER_PACKET_EXTEND *packet_ext = (DATA_LAYER_PACKET_EXTEND *)data;
     
@@ -416,7 +416,15 @@ sent_data_packet(unsigned char slot_id,
 	return SendDataPacketThroughLinkLayer(slot_id, fd, data, data_payload_length, linklayer_ack_delay, verbose);
 }
 
+/**
+  Data Layer Receive From PlatFire
+
+  @param  none
+
+  @param  none
+
 **/
+
 int DataLayerReceiveFromPlatFire(
     unsigned char fru_id,
     int fd,
