@@ -1,13 +1,22 @@
 #include <stdint.h>
 
-#define PROT_SESSION_KEY "slot%d_prot_sessionid"
+#ifndef _PLATFIRE_SMBUS_INTF_
+#define _PLATFIRE_SMBUS_INTF_
 
-#define DATA_LAYER_MAX_PAYLOAD          (512)  // include 1 byte CheckSum
-#define DATA_LAYER_MAX_ACK_PAYLOAD      (252)  // include 1 byte CheckSum
-#define PLATFIRE_SLAVE_ADDRESS          (0x51)
-#define SMBUS_READ_COMMAND              (0x7F)
-#define LINK_LAYER_MAX_LOAD             (30)      // include 1 byte CheckSum
-#define LINK_LAYER_MAX_RECEIVE_LOAD     (28)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define PROT_SESSION_KEY "fru%d_prot_sessionid"
+
+#define DATA_LAYER_MAX_PAYLOAD (252) // include 1 byte CheckSum
+#define DATA_LAYER_EXTEND_MAX_PAYLOAD (508) // include 1 byte CheckSum
+#define DATA_LAYER_EXTEND_MAX_PACKET (512) 
+#define DATA_LAYER_MAX_ACK_PAYLOAD (252) // include 1 byte CheckSum
+#define PLATFIRE_SLAVE_ADDRESS (0x51)
+#define SMBUS_READ_COMMAND (0x7F)
+#define LINK_LAYER_MAX_LOAD (30) // include 1 byte CheckSum
+#define LINK_LAYER_MAX_RECEIVE_LOAD (28)
 
 enum {
   ACK_CMD_UNSUPPORTED = 0x01,
@@ -66,54 +75,55 @@ enum {
 };
 
 typedef struct {
-    unsigned char Command:6; //Command will be unique for each datalayer transaction.
-    unsigned char AckNeeded:1;
-    unsigned char PackageType:1; 
-    unsigned char Length;
-    unsigned char SubPackageIndex:4;
-    unsigned char LastPackageIndex:4;
-    unsigned char PayLoad[LINK_LAYER_MAX_LOAD + 1]; //Last payload will be checksum.
+  unsigned char
+      Command : 6; // Command will be unique for each datalayer transaction.
+  unsigned char AckNeeded : 1;
+  unsigned char PackageType : 1;
+  unsigned char Length;
+  unsigned char SubPackageIndex : 4;
+  unsigned char LastPackageIndex : 4;
+  unsigned char
+      PayLoad[LINK_LAYER_MAX_LOAD + 1]; // Last payload will be checksum.
 } LINK_LAYER_PACKET_MASTER;
 
 ///
 ///  LinkLayer receive acknowledgment structure
 ///
 typedef struct {
-    unsigned char Length;
-    unsigned char Command:6;
-    unsigned char AckNeeded:1; 
-    unsigned char PackageType:1; // 0->data, 1->ack
-    unsigned char SubPackageIndex:4;
-    unsigned char AckFlag:4; //ACK=0x1, NoACK=0x2
-    unsigned char PayLoad[LINK_LAYER_MAX_RECEIVE_LOAD];
-    // [2021-10-4 Feng] Actual data-> 20 81 10  0 0 0 0  0 0 0 0  0 0 0 0   0 0 0 0   0 0 0 0   0 0 0 0   0 0 0 0   4f
-    // [2021-10-6 Madhan] BIOS Smbus is not able to handle 33 bytes in physical layer. They can send only 32 bytes. We need to maintain the same smbus layer in the code we will provide the updated document with this information and library update.
-
-    unsigned char CheckSum; //checksum of all the bytes in the linklayer pkg except the checksum
-} LINK_LAYER_PACKET_ACK_MASTER; // 32
+  unsigned char Length;
+  unsigned char Command : 6;
+  unsigned char AckNeeded : 1;
+  unsigned char PackageType : 1; // 0->data, 1->ack
+  unsigned char SubPackageIndex : 4;
+  unsigned char AckFlag : 4; // ACK=0x1, NoACK=0x2
+  unsigned char PayLoad[LINK_LAYER_MAX_RECEIVE_LOAD];
+  unsigned char CheckSum; // checksum of all the bytes in the linklayer pkg
+} LINK_LAYER_PACKET_ACK_MASTER;
 
 typedef struct {
-    unsigned char Command;
-    unsigned char Length;
-    unsigned char Flag; // Bit 0, 0 Data, 1 ACK    Bit 1, 0 NoAck 1 ACK    Bit 2 need ACK? 
-    unsigned char PayLoad[255];  // include 1 byte CheckSum
+  unsigned char Command;
+  unsigned char Length;
+  unsigned char
+      Flag; // Bit 0, 0 Data, 1 ACK    Bit 1, 0 NoAck 1 ACK    Bit 2 need ACK
+  unsigned char PayLoad[DATA_LAYER_MAX_PAYLOAD]; // include 1 byte CheckSum
 } DATA_LAYER_PACKET;
 
 typedef struct {
-    volatile unsigned char Command;
-    volatile uint16_t Length;
-    volatile unsigned char Flag; // Bit 0, 0 Data, 1 ACK    Bit 1, 0 NoAck 1 ACK    Bit 2 need ACK? 
-    unsigned char PayLoad[DATA_LAYER_MAX_PAYLOAD];  // include 1 byte CheckSum
-}__attribute__((packed)) DATA_LAYER_PACKET_EXTEND;
+  volatile unsigned char Command;
+  volatile uint16_t Length;
+  volatile unsigned char
+      Flag; // Bit 0, 0 Data, 1 ACK    Bit 1, 0 NoAck 1 ACK    Bit 2 need ACK
+  unsigned char PayLoad[DATA_LAYER_EXTEND_MAX_PAYLOAD]; // include 1 byte CheckSum
+} __attribute__((packed)) DATA_LAYER_PACKET_EXTEND;
 
 
 // sizeof(DATA_LAYER_PACKET) = 258 
 // sizeof(DATA_LAYER_PACKET_EXTEND) = 518 
 typedef struct {
-    unsigned char Length;
-    unsigned char AckCommand; 
-    unsigned char Flag;
-    unsigned char PayLoad[DATA_LAYER_MAX_ACK_PAYLOAD];  // include 1 byte CheckSum
+  unsigned char Length;
+  unsigned char AckCommand;
+  unsigned char Flag;
+  unsigned char PayLoad[DATA_LAYER_MAX_ACK_PAYLOAD]; // include 1 byte CheckSum
 } DATA_LAYER_PACKET_ACK; // 255
 
 // Function Declarations
@@ -123,19 +133,18 @@ typedef struct {
   Sending data by splitting into number of LinkLayer Packets
 
   @param  IN DataPacket - Buffer contains data layer structure data
-  
-  @retval int 0 - SUCCESS 
+
+  @retval int 0 - SUCCESS
               1 - FAIL
 
 **/
 int SendDataPacketThroughLinkLayer(
-        unsigned char slot_id,
-        int fd,
-        unsigned char *DataPacket,
-        unsigned int data_payload_length,
-        unsigned int linklayer_ack_delay,
-        int verbose
-        );
+    unsigned char fru_id,
+    int fd,
+    unsigned char* DataPacket,
+    unsigned int data_payload_length,
+    unsigned int linklayer_ack_delay,
+    int verbose);
 
 /**
   Function is to send the splitted linklayer packets
@@ -145,82 +154,63 @@ int SendDataPacketThroughLinkLayer(
   @param  IN unsigned int  BufferLength,
   @param  IN unsigned char AckNeeded,
   @param  IN unsigned char SubPackageIndex,
-  @param  IN unsigned char LastSubPackageIndex 
-  
-  @param  int 0 - SUCCESS 
+  @param  IN unsigned char LastSubPackageIndex
+
+  @param  int 0 - SUCCESS
               1 - FAIL
 
 **/
-int SendPacketThroughLinkLayer( 
-        int fd,
-        unsigned char Command,
-        unsigned char *SendBuffer,
-        unsigned int  BufferLength,
-        unsigned char ACKneeded,
-        unsigned char Subpkgindex,
-        unsigned char Lastsubpkgindex,
-        int verbose
-        ); 
+int SendPacketThroughLinkLayer(
+    int fd,
+    unsigned char Command,
+    unsigned char* SendBuffer,
+    unsigned int BufferLength,
+    unsigned char AckNeeded,
+    unsigned char SubPackageIndex,
+    unsigned char LastSubPackageIndex,
+    int verbose);
 
 /**
   Function is receive acknowldgement for Link Layer Packet
-  
+
   @param IN unsigned char *Buffer
   @param IN unsigned int Length
-  
+
   @retval 0 - SUCCESS, 1 - FAIL
 **/
 int LinkLayerReceiveAcknowldgement(
-        int fd,
-        unsigned char session_id,
-        unsigned char *RecieveBuffer,
-        int verbose
-        );
+    int fd,
+    unsigned char session_id,
+    unsigned char* RecieveBuffer,
+    int verbose);
 
 /**
   Function is to Send acknowledgment after receiving packet
 
-  @param  unsigned int SessionId used to updated command for linklayer packet 
+  @param  unsigned int SessionId used to updated command for linklayer packet
   @param  unsigned char SubPackageId
-  
+
   @retval int 0 - SUCCESS, 1 - FAIL
 
 **/
 int LinkLayerSendAcknowldgement(
-        int fd,
-        unsigned int SessionId, 
-        unsigned char SubPackageId,
-        int verbose
-        ); 
-
-/**
-  Function is Send Acknowldgement for Link Layer Packet
-  
-  @param IN unsigned char *RecieveBuffer
-  @param IN unsigned int Length
-  
-  @retval int 0 - SUCCESS, 1 - FAIL
-**/
-// int LinkLayerReceiveAcknowldgement(
-//         unsigned char *RecieveBuffer,
-//         int *Length
-//         );
+    int fd,
+    unsigned int SessionId,
+    unsigned char SubPackageId,
+    int verbose);
 
 /**
   Function is to Calculate Checksum for the data except the checksum field
 
-  @param  unsigned char *buffer, 
+  @param  unsigned char *buffer,
   @param  int Length
-  
-  @param  unsigned char 
+
+  @param  unsigned char
 
 **/
-unsigned char checksum_verify(unsigned char *buffer, int length);
+unsigned char checksum_verify(unsigned char* buffer, int length);
 
-unsigned char CalculateCheckSum(
-        unsigned char *Buffer, 
-        int Length
-        );
+unsigned char CalculateCheckSum(unsigned char* Buffer, int Length);
 
 int
 datalayer_send_receive(unsigned char slot_id,
@@ -243,61 +233,66 @@ int sent_data_packet(unsigned char slot_id,
   This function is use to receive back the data Layer packet
 
   @param  none
-  
+
   @param  none
 
 **/
-int DataLayerReceiveFromPlatFire(unsigned char slot_id, int fd, unsigned char *DataLayerAckBuffer, int verbose);
+int DataLayerReceiveFromPlatFire(
+    unsigned char fru_id,
+    int fd,
+    unsigned char* DataLayerAckBuffer,
+    int verbose);
 
 /**
   Function is Smbus Locate And Write Execute
-  
-  @param unsigned char Command
+
+  @param unsigned char command
   @param unsigned int Length
-  @param unsigned char *Buffer
-  
+  @param unsigned char *data
+
   @retval 0 - SUCCESS, 1 - FAIL
 **/
 int SmbusWriteBlockExecute(
-        int fd,
-        unsigned char Command,
-        unsigned int Length,
-        unsigned char *Buffer,
-        int verbose
-        );
+    int fd,
+    unsigned char command,
+    unsigned int length,
+    unsigned char* data,
+    int verbose);
 
 
 		
 /**
   MicroSecond Delay
-  
-  @param IN int Delay
-  
+
+  @param IN int delay
+
   @retval void
-  
+
 **/
-void MicroSecondDelay(
-        int Delay,
-        int verbose
-        );
-        
+void MicroSecondDelay(int delay, int verbose);
+
 /**
   Print buffer content
-  
+
   @param IN UINT8 *Buffer
   @param IN UINTN BufferLength
-  
+
   @retval void
-  
+
 **/
 void PrintBuffer(
         unsigned char *Buffer,
         unsigned int BufferLength,
         int verbose
         );
-        
+
 #define DEBUG(fmt, args...)		\
 	do {					\
 		if (verbose)		\
 			printf(fmt, ##args);	\
 	} while (0)
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#endif   /* _PLATFIRE_SMBUS_INTF_ */
